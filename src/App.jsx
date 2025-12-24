@@ -14,9 +14,6 @@ const Styles = () => (
     
     .ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
     
-    /* 修改点：Main Title 现在是独立的绝对定位元素 
-       增加了 transition 用于处理移动和淡入淡出
-    */
     .main-title { 
       position: absolute;
       left: 50%;
@@ -28,11 +25,10 @@ const Styles = () => (
       line-height: 1.1; 
       text-align: center;
       white-space: nowrap;
-      z-index: 60; /* 确保在最上层 */
-      transition: all 1s ease-in-out; /* 平滑移动动画 */
+      z-index: 60;
+      transition: all 1s ease-in-out;
     }
 
-    /* Start Screen 现在只包含按钮和副标题 */
     .start-screen-content {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -43,7 +39,7 @@ const Styles = () => (
     }
     
     .sub-title { 
-      font-size: 1.5rem; color: #94a3b8; letter-spacing: 0.2em; margin-top: 120px; text-align: center; /* margin-top 增加以避开标题 */
+      font-size: 1.5rem; color: #94a3b8; letter-spacing: 0.2em; margin-top: 120px; text-align: center;
     }
 
     .enter-btn {
@@ -84,12 +80,6 @@ const Styles = () => (
     }
     .morph-btn:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); }
     
-    .gesture-hint {
-        position: absolute; top: 20px; right: 20px; text-align: right;
-        font-family: 'Inter', sans-serif; font-size: 12px; color: rgba(255,255,255,0.5);
-    }
-
-    /* 颜色选择器样式 */
     .color-picker {
       position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
       display: flex; gap: 15px; padding: 10px 20px;
@@ -163,26 +153,17 @@ const useMediaPipe = (videoRef, canvasRef, onGesture) => {
           if (!canvasRef.current) return;
           const ctx = canvasRef.current.getContext('2d');
           ctx.save();
-          ctx.clearRect(
-            0,
-            0,
-            canvasRef.current.width,
-            canvasRef.current.height
-          );
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
           ctx.translate(canvasRef.current.width, 0);
           ctx.scale(-1, 1);
           ctx.drawImage(
             results.image,
-            0,
-            0,
+            0, 0,
             canvasRef.current.width,
             canvasRef.current.height
           );
 
-          if (
-            results.multiHandLandmarks &&
-            results.multiHandLandmarks.length > 0
-          ) {
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const lm = results.multiHandLandmarks[0];
             if (window.drawConnectors)
               window.drawConnectors(ctx, lm, window.HAND_CONNECTIONS, {
@@ -193,7 +174,6 @@ const useMediaPipe = (videoRef, canvasRef, onGesture) => {
             const thumb = lm[4];
             const index = lm[8];
             const dist = Math.hypot(thumb.x - index.x, thumb.y - index.y);
-
             const isPinch = dist < 0.08 || index.y > lm[5].y;
             const isOpen = !isPinch && dist > 0.12;
 
@@ -412,8 +392,8 @@ const SpiralRibbon = ({ powerOn }) => {
   );
 };
 
-// --- 文字生成 ---
-const createTextPoints = (text, width = 40, height = 20) => {
+// --- 文字生成 (关键修改：增大尺寸) ---
+const createTextPoints = (text, width = 60, height = 30) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const w = 2048;
@@ -422,26 +402,31 @@ const createTextPoints = (text, width = 40, height = 20) => {
   canvas.height = h;
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, w, h);
-  ctx.font = '400 180px "Luxurious Script", cursive';
+  
+  // 修改 1：字体变大到 300px
+  ctx.font = '400 300px "Luxurious Script", cursive';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 15;
+  ctx.lineWidth = 20;
+  
   const lines = text.split('\n');
-  const lineHeight = 200;
+  const lineHeight = 320;
   const startY = h / 2 - ((lines.length - 1) * lineHeight) / 2;
   lines.forEach((line, i) => {
     const y = startY + i * lineHeight;
     ctx.strokeText(line, w / 2, y);
     ctx.fillText(line, w / 2, y);
   });
+  
   const imgData = ctx.getImageData(0, 0, w, h).data;
   const coords = [];
   const gap = 4;
   for (let y = 0; y < h; y += gap) {
     for (let x = 0; x < w; x += gap) {
       if (imgData[(y * w + x) * 4] > 64) {
+        // 修改 2：width 参数现在在调用时会传入更大的值 (60)
         coords.push((x / w - 0.5) * width, -(y / h - 0.5) * height, 0);
       }
     }
@@ -449,13 +434,11 @@ const createTextPoints = (text, width = 40, height = 20) => {
   return new Float32Array(coords);
 };
 
-// --- 工具：生成特定颜色的树粒子颜色 ---
 const generateTreeColors = (count, hexColor) => {
   const col = new Float32Array(count * 3);
   const uniformColor = new THREE.Color(hexColor);
   for (let i = 0; i < count; i++) {
     const base = uniformColor.clone();
-    // 增加一点随机扰动，让树更有质感
     base.r += (Math.random() - 0.5) * 0.15;
     base.g += (Math.random() - 0.5) * 0.15;
     base.b += (Math.random() - 0.5) * 0.15;
@@ -469,7 +452,6 @@ const generateTreeColors = (count, hexColor) => {
 // --- 可变形粒子树/文字 ---
 const MorphParticleTree = ({
   powerOn,
-  gestureState,
   recipient,
   targetMode,
   treeColor,
@@ -477,10 +459,9 @@ const MorphParticleTree = ({
   const count = 15000;
   const meshRef = useRef(null);
 
-  // 1. 初始化树的结构 (位置)
   const initialData = useMemo(() => {
     const pos = new Float32Array(count * 3);
-    const col = generateTreeColors(count, treeColor); // 初始颜色
+    const col = generateTreeColors(count, treeColor);
     for (let i = 0; i < count; i++) {
       const h = Math.cbrt(Math.random());
       const y = 8 - h * 40;
@@ -491,7 +472,7 @@ const MorphParticleTree = ({
       pos[i * 3 + 2] = Math.sin(a) * r;
     }
     return { pos, col };
-  }, []); // 只运行一次
+  }, []);
 
   const pointsRef = useRef(initialData.pos.slice(0));
   const colorsRef = useRef(initialData.col.slice(0));
@@ -501,13 +482,14 @@ const MorphParticleTree = ({
 
   const textPoints = useMemo(() => {
     const text = `Merry Christmas\nand Happy New Year\nDear ${recipient}`;
-    return createTextPoints(text);
+    // 修改 3：传入宽度 60，高度 30，让文字更大
+    return createTextPoints(text, 60, 30);
   }, [recipient]);
 
   const animationPhase = useRef(0);
 
-  // 监听 treeColor 变化，实时更新目标颜色
   useEffect(() => {
+    // 监听 treeColor 实时更新
     if (targetMode === 'TREE') {
       const newColors = generateTreeColors(count, treeColor);
       for (let i = 0; i < count; i++) {
@@ -521,10 +503,10 @@ const MorphParticleTree = ({
   useEffect(() => {
     animationPhase.current = 1;
 
-    // 设置目标颜色
+    // 1. 设置颜色目标
     if (targetMode === 'TEXT') {
       for (let i = 0; i < count; i++) {
-        targetColors.current[i * 3] = 4.0;
+        targetColors.current[i * 3] = 4.0;     // 亮白色
         targetColors.current[i * 3 + 1] = 4.0;
         targetColors.current[i * 3 + 2] = 4.0;
       }
@@ -537,7 +519,7 @@ const MorphParticleTree = ({
       }
     }
 
-    // 设置爆炸轨迹
+    // 2. 爆炸阶段 (Phase 1)
     for (let i = 0; i < count; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(Math.random() * 2 - 1);
@@ -547,8 +529,10 @@ const MorphParticleTree = ({
       targetPositions.current[i * 3 + 2] = Math.cos(phi) * r;
     }
 
+    // 3. 聚拢阶段 (Phase 2)
     const t = setTimeout(() => {
-      animationPhase.current = 2; // Assemble
+      animationPhase.current = 2; 
+      
       if (targetMode === 'TEXT') {
         const len = textPoints.length / 3;
         for (let i = 0; i < count; i++) {
@@ -557,13 +541,14 @@ const MorphParticleTree = ({
             targetPositions.current[i * 3 + 1] = textPoints[i * 3 + 1];
             targetPositions.current[i * 3 + 2] = textPoints[i * 3 + 2];
           } else {
-            targetPositions.current[i * 3] = 0;
-            targetPositions.current[i * 3 + 1] = -200;
-            targetPositions.current[i * 3 + 2] = 0;
+            // 修改 4：隐藏未使用的粒子时，不要放得太深，改为 -50，方便飞回
+            targetPositions.current[i * 3] = (Math.random() - 0.5) * 20;
+            targetPositions.current[i * 3 + 1] = -50; 
+            targetPositions.current[i * 3 + 2] = (Math.random() - 0.5) * 20;
           }
         }
       } else {
-        // Back to tree
+        // Back to tree：强制重置位置和颜色
         for (let i = 0; i < count; i++) {
           targetPositions.current[i * 3] = initialData.pos[i * 3];
           targetPositions.current[i * 3 + 1] = initialData.pos[i * 3 + 1];
@@ -593,29 +578,21 @@ const MorphParticleTree = ({
     const lerpFactor = animationPhase.current === 1 ? 2.0 * delta : 3.0 * delta;
 
     for (let i = 0; i < count; i++) {
-      positions[i * 3] +=
-        (targetPositions.current[i * 3] - positions[i * 3]) * lerpFactor;
-      positions[i * 3 + 1] +=
-        (targetPositions.current[i * 3 + 1] - positions[i * 3 + 1]) *
-        lerpFactor;
-      positions[i * 3 + 2] +=
-        (targetPositions.current[i * 3 + 2] - positions[i * 3 + 2]) *
-        lerpFactor;
+      positions[i * 3] += (targetPositions.current[i * 3] - positions[i * 3]) * lerpFactor;
+      positions[i * 3 + 1] += (targetPositions.current[i * 3 + 1] - positions[i * 3 + 1]) * lerpFactor;
+      positions[i * 3 + 2] += (targetPositions.current[i * 3 + 2] - positions[i * 3 + 2]) * lerpFactor;
 
-      colors[i * 3] +=
-        (targetColors.current[i * 3] - colors[i * 3]) * lerpFactor;
-      colors[i * 3 + 1] +=
-        (targetColors.current[i * 3 + 1] - colors[i * 3 + 1]) * lerpFactor;
-      colors[i * 3 + 2] +=
-        (targetColors.current[i * 3 + 2] - colors[i * 3 + 2]) * lerpFactor;
+      colors[i * 3] += (targetColors.current[i * 3] - colors[i * 3]) * lerpFactor;
+      colors[i * 3 + 1] += (targetColors.current[i * 3 + 1] - colors[i * 3 + 1]) * lerpFactor;
+      colors[i * 3 + 2] += (targetColors.current[i * 3 + 2] - colors[i * 3 + 2]) * lerpFactor;
     }
 
     meshRef.current.geometry.attributes.position.needsUpdate = true;
     meshRef.current.geometry.attributes.color.needsUpdate = true;
 
-    const baseScale = targetMode === 'TEXT' ? 1.2 : 1.0;
-    const s =
-      baseScale * (0.98 + Math.sin(state.clock.elapsedTime * 0.8) * 0.01);
+    // 修改 5：文字模式下 Scale 增大到 1.5
+    const baseScale = targetMode === 'TEXT' ? 1.5 : 1.0;
+    const s = baseScale * (0.98 + Math.sin(state.clock.elapsedTime * 0.8) * 0.01);
     meshRef.current.scale.lerp(new THREE.Vector3(s, s, s), 0.1);
   });
 
@@ -647,7 +624,6 @@ const MorphParticleTree = ({
   );
 };
 
-// --- 场景组件 ---
 const Scene = ({ powerOn, recipient, morphMode, treeColor }) => {
   return (
     <>
@@ -690,16 +666,11 @@ const Scene = ({ powerOn, recipient, morphMode, treeColor }) => {
   );
 };
 
-// --- 主 APP ---
 export default function App() {
   const [started, setStarted] = useState(false);
   const [powerOn, setPowerOn] = useState(false);
   const [morphMode, setMorphMode] = useState('TREE');
-  const [gestureState, setGestureState] = useState({
-    type: 'IDLE',
-    x: 0,
-    y: 0,
-  });
+  const [gestureState, setGestureState] = useState({ type: 'IDLE', x: 0, y: 0 });
   const [isHoveringBulb, setIsHoveringBulb] = useState(false);
   const [recipient, setRecipient] = useState('Friend');
   const [treeColor, setTreeColor] = useState(TREE_COLORS[0].hex);
@@ -753,17 +724,12 @@ export default function App() {
     <>
       <Styles />
       <div className="ui-container">
-        {/* Main Title: 独立于 Start Screen 的绝对定位元素
-            started 为 false 时居中
-            started 为 true 且是 Tree 模式时，移到顶部
-            TEXT 模式时隐藏
-        */}
         <h1
           className="main-title lux-font"
           style={{
-            top: started ? '10%' : '40%', // Enter 后上移
+            top: started ? '10%' : '40%',
             transform: started ? 'translate(-50%, 0)' : 'translate(-50%, -50%)',
-            opacity: started && morphMode === 'TEXT' ? 0 : 1, // 祝福语界面隐藏
+            opacity: started && morphMode === 'TEXT' ? 0 : 1,
           }}
         >
           Merry Christmas
@@ -776,7 +742,6 @@ export default function App() {
             pointerEvents: started ? 'none' : 'auto',
           }}
         >
-          {/* 这里只保留副标题和按钮，主标题移出去了 */}
           <p className="sub-title inter-font">TO: {recipient}</p>
           <button className="enter-btn" onClick={() => setStarted(true)}>
             ENTER
@@ -793,8 +758,7 @@ export default function App() {
           <div
             className="bulb-content"
             style={{
-              opacity:
-                started && morphMode === 'TREE' && isHoveringBulb ? 1 : 0,
+              opacity: started && morphMode === 'TREE' && isHoveringBulb ? 1 : 0,
             }}
           >
             <div
@@ -882,7 +846,6 @@ export default function App() {
               recipient={recipient}
               morphMode={morphMode}
               treeColor={treeColor}
-              gestureState={gestureState}
             />
           )}
         </Suspense>
