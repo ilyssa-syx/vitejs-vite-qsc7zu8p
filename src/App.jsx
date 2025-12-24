@@ -4,7 +4,7 @@ import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 
-// --- 样式注入 ---
+// --- 样式注入 (已移除 Camera 相关样式) ---
 const Styles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Luxurious+Script&display=swap');
@@ -14,9 +14,7 @@ const Styles = () => (
     
     .ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
     
-    /* 修改点：Main Title 现在是独立的绝对定位元素 
-       增加了 transition 用于处理移动和淡入淡出
-    */
+    /* Main Title */
     .main-title { 
       position: absolute;
       left: 50%;
@@ -28,11 +26,11 @@ const Styles = () => (
       line-height: 1.1; 
       text-align: center;
       white-space: nowrap;
-      z-index: 60; /* 确保在最上层 */
-      transition: all 1s ease-in-out; /* 平滑移动动画 */
+      z-index: 60; 
+      transition: all 1s ease-in-out; 
     }
 
-    /* Start Screen 现在只包含按钮和副标题 */
+    /* Start Screen */
     .start-screen-content {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -43,7 +41,7 @@ const Styles = () => (
     }
     
     .sub-title { 
-      font-size: 1.5rem; color: #94a3b8; letter-spacing: 0.2em; margin-top: 120px; text-align: center; /* margin-top 增加以避开标题 */
+      font-size: 1.5rem; color: #94a3b8; letter-spacing: 0.2em; margin-top: 120px; text-align: center; 
     }
 
     .enter-btn {
@@ -54,6 +52,7 @@ const Styles = () => (
     }
     .enter-btn:hover { background: #ffffff; transform: scale(1.05); box-shadow: 0 0 40px rgba(255,255,255,0.8); }
     
+    /* 灯泡交互区 */
     .bulb-hitbox {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       width: 250px; height: 250px; 
@@ -72,8 +71,7 @@ const Styles = () => (
     .bulb-icon:hover { background: rgba(255,255,255,0.2); transform: scale(1.1); }
     .bulb-icon.on { background: rgba(255, 215, 0, 0.2); box-shadow: 0 0 40px rgba(255, 215, 0, 0.6); border-color: rgba(255, 215, 0, 1); }
     
-    .camera-box { position: absolute; bottom: 30px; right: 30px; width: 120px; height: 90px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; overflow: hidden; pointer-events: auto; }
-    
+    /* 底部按钮 */
     .morph-btn {
       position: absolute; bottom: 30px; left: 30px;
       padding: 12px 25px;
@@ -84,11 +82,6 @@ const Styles = () => (
     }
     .morph-btn:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); }
     
-    .gesture-hint {
-        position: absolute; top: 20px; right: 20px; text-align: right;
-        font-family: 'Inter', sans-serif; font-size: 12px; color: rgba(255,255,255,0.5);
-    }
-
     /* 颜色选择器样式 */
     .color-picker {
       position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
@@ -115,113 +108,6 @@ const TREE_COLORS = [
   { name: 'Blue', hex: '#88ccff' },
   { name: 'Purple', hex: '#cc88ff' },
 ];
-
-// --- MEDIAPIPE HOOK ---
-const useMediaPipe = (videoRef, canvasRef, onGesture) => {
-  useEffect(() => {
-    if (!videoRef.current || !canvasRef.current) return;
-    let hands;
-    let camera;
-
-    const loadScripts = async () => {
-      const urls = [
-        'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js',
-        'https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js',
-        'https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js',
-        'https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js',
-      ];
-      await Promise.all(
-        urls.map(
-          (src) =>
-            new Promise((resolve) => {
-              if (document.querySelector(`script[src="${src}"]`)) {
-                resolve();
-                return;
-              }
-              const s = document.createElement('script');
-              s.src = src;
-              s.onload = resolve;
-              document.body.appendChild(s);
-            })
-        )
-      );
-
-      if (window.Hands) {
-        hands = new window.Hands({
-          locateFile: (file) =>
-            `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-        });
-
-        hands.setOptions({
-          maxNumHands: 1,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.3,
-          minTrackingConfidence: 0.3,
-        });
-
-        hands.onResults((results) => {
-          if (!canvasRef.current) return;
-          const ctx = canvasRef.current.getContext('2d');
-          ctx.save();
-          ctx.clearRect(
-            0,
-            0,
-            canvasRef.current.width,
-            canvasRef.current.height
-          );
-          ctx.translate(canvasRef.current.width, 0);
-          ctx.scale(-1, 1);
-          ctx.drawImage(
-            results.image,
-            0,
-            0,
-            canvasRef.current.width,
-            canvasRef.current.height
-          );
-
-          if (
-            results.multiHandLandmarks &&
-            results.multiHandLandmarks.length > 0
-          ) {
-            const lm = results.multiHandLandmarks[0];
-            if (window.drawConnectors)
-              window.drawConnectors(ctx, lm, window.HAND_CONNECTIONS, {
-                color: '#00FF00',
-                lineWidth: 1,
-              });
-
-            const thumb = lm[4];
-            const index = lm[8];
-            const dist = Math.hypot(thumb.x - index.x, thumb.y - index.y);
-
-            const isPinch = dist < 0.08 || index.y > lm[5].y;
-            const isOpen = !isPinch && dist > 0.12;
-
-            let type = 'IDLE';
-            if (isPinch) type = 'PINCH';
-            if (isOpen) type = 'OPEN';
-
-            onGesture({ type, x: 1 - index.x, y: index.y });
-          }
-          ctx.restore();
-        });
-
-        if (window.Camera) {
-          camera = new window.Camera(videoRef.current, {
-            onFrame: async () => {
-              if (videoRef.current && videoRef.current.readyState >= 2)
-                await hands.send({ image: videoRef.current });
-            },
-            width: 320,
-            height: 240,
-          });
-          camera.start();
-        }
-      }
-    };
-    loadScripts();
-  }, []);
-};
 
 // --- 背景粒子 ---
 const FallingSnow = () => {
@@ -413,7 +299,7 @@ const SpiralRibbon = ({ powerOn }) => {
 };
 
 // --- 文字生成 ---
-const createTextPoints = (text, width = 64, height = 32) => {
+const createTextPoints = (text, width = 40, height = 20) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const w = 2048;
@@ -422,12 +308,12 @@ const createTextPoints = (text, width = 64, height = 32) => {
   canvas.height = h;
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, w, h);
-  ctx.font = '400 280px "Luxurious Script", cursive';
+  ctx.font = '400 180px "Luxurious Script", cursive';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 25;
+  ctx.lineWidth = 15;
   const lines = text.split('\n');
   const lineHeight = 200;
   const startY = h / 2 - ((lines.length - 1) * lineHeight) / 2;
@@ -469,7 +355,6 @@ const generateTreeColors = (count, hexColor) => {
 // --- 可变形粒子树/文字 ---
 const MorphParticleTree = ({
   powerOn,
-  gestureState,
   recipient,
   targetMode,
   treeColor,
@@ -696,20 +581,9 @@ export default function App() {
   const [started, setStarted] = useState(false);
   const [powerOn, setPowerOn] = useState(false);
   const [morphMode, setMorphMode] = useState('TREE');
-  const [gestureState, setGestureState] = useState({
-    type: 'IDLE',
-    x: 0,
-    y: 0,
-  });
   const [isHoveringBulb, setIsHoveringBulb] = useState(false);
   const [recipient, setRecipient] = useState('Friend');
   const [treeColor, setTreeColor] = useState(TREE_COLORS[0].hex);
-
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const lastY = useRef(0);
-  const prevGestureType = useRef('IDLE');
-  const lastModeChangeTime = useRef(0);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -717,48 +591,11 @@ export default function App() {
     if (name) setRecipient(name);
   }, []);
 
-  const handleGesture = (data) => {
-    setGestureState(data);
-    const { type, y } = data;
-    const prev = prevGestureType.current;
-    const now = Date.now();
-
-    if (type === 'PINCH') {
-      if (y - lastY.current > 0.03) {
-        if (now - lastModeChangeTime.current > 500) {
-          setPowerOn((prevPower) => !prevPower);
-          lastModeChangeTime.current = now;
-        }
-        lastY.current = y;
-      }
-    }
-
-    if (now - lastModeChangeTime.current > 1500) {
-      if (prev === 'PINCH' && type === 'OPEN' && morphMode === 'TREE') {
-        setMorphMode('TEXT');
-        lastModeChangeTime.current = now;
-      }
-      if (type === 'PINCH' && morphMode === 'TEXT') {
-        setMorphMode('TREE');
-        lastModeChangeTime.current = now;
-      }
-    }
-
-    lastY.current = y;
-    prevGestureType.current = type;
-  };
-
-  useMediaPipe(videoRef, canvasRef, handleGesture);
-
   return (
     <>
       <Styles />
       <div className="ui-container">
-        {/* Main Title: 独立于 Start Screen 的绝对定位元素
-            started 为 false 时居中
-            started 为 true 且是 Tree 模式时，移到顶部
-            TEXT 模式时隐藏
-        */}
+        {/* Main Title */}
         <h1
           className="main-title lux-font"
           style={{
@@ -777,7 +614,6 @@ export default function App() {
             pointerEvents: started ? 'none' : 'auto',
           }}
         >
-          {/* 这里只保留副标题和按钮，主标题移出去了 */}
           <p className="sub-title inter-font">TO: {recipient}</p>
           <button className="enter-btn" onClick={() => setStarted(true)}>
             ENTER
@@ -802,7 +638,7 @@ export default function App() {
               className="inter-font"
               style={{ fontSize: '10px', color: '#aaa', letterSpacing: '2px' }}
             >
-              PINCH & PULL (OR CLICK)
+              CLICK TO TOGGLE
             </div>
             <div className={`bulb-icon ${powerOn ? 'on' : ''}`}>
               <svg
@@ -840,36 +676,6 @@ export default function App() {
         >
           {morphMode === 'TREE' ? 'SHOW WISHES' : 'BACK TO TREE'}
         </button>
-
-        <div
-          className="camera-box"
-          style={{ opacity: started ? 1 : 0, transition: 'opacity 1s' }}
-        >
-          <video
-            ref={videoRef}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              opacity: 0.6,
-            }}
-            autoPlay
-            playsInline
-            muted
-          />
-          <canvas
-            ref={canvasRef}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-            }}
-            width={320}
-            height={240}
-          />
-        </div>
       </div>
 
       <Canvas
@@ -883,7 +689,6 @@ export default function App() {
               recipient={recipient}
               morphMode={morphMode}
               treeColor={treeColor}
-              gestureState={gestureState}
             />
           )}
         </Suspense>
