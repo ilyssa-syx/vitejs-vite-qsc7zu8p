@@ -1,0 +1,19 @@
+:root,
+body,
+html {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #010102; /* 深蓝背景，防止刺眼 */
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
