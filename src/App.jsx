@@ -299,36 +299,65 @@ const SpiralRibbon = ({ powerOn }) => {
 };
 
 // --- 文字生成 ---
+
+// --- 文字生成优化版 ---
 const createTextPoints = (text, width = 64, height = 32) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
+  
+  // 保持高分辨率画布以确保文字清晰
   const w = 2048;
   const h = 1024;
   canvas.width = w;
   canvas.height = h;
+
+  // 背景涂黑
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, w, h);
-  ctx.font = '400 280px "Luxurious Script", cursive';
+
+  // --- 字体配置：改为 Times New Roman ---
+  // 字号调小到 160px (原先 280px)，确保不溢出
+  const fontSize = 160; 
+  ctx.font = `bold ${fontSize}px "Times New Roman", serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';
+  
+  // 描边稍微细一点，防止糊成一团
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 25;
-  const lines = text.split('\n');
-  const lineHeight = 200;
+  ctx.lineWidth = 8; 
+
+  // 将所有文字转为大写
+  const lines = text.toUpperCase().split('\n');
+  
+  // 增大行高间距，视觉更舒展
+  const lineHeight = fontSize * 1.4; 
   const startY = h / 2 - ((lines.length - 1) * lineHeight) / 2;
+
   lines.forEach((line, i) => {
     const y = startY + i * lineHeight;
+    // 先描边再填充，增加文字粗细感
     ctx.strokeText(line, w / 2, y);
     ctx.fillText(line, w / 2, y);
   });
+
   const imgData = ctx.getImageData(0, 0, w, h).data;
   const coords = [];
-  const gap = 4;
+  
+  // gap 调小到 3 (原先 4)，粒子会更密集，文字更清晰
+  const gap = 3; 
+  
   for (let y = 0; y < h; y += gap) {
     for (let x = 0; x < w; x += gap) {
-      if (imgData[(y * w + x) * 4] > 64) {
-        coords.push((x / w - 0.5) * width, -(y / h - 0.5) * height, 0);
+      // 检查红色通道值
+      if (imgData[(y * w + x) * 4] > 50) {
+        // 映射到 3D 空间
+        // 这里的 0.8 是为了微调文字在屏幕中的比例
+        coords.push(
+          (x / w - 0.5) * width * 0.8, 
+          -(y / h - 0.5) * height * 0.8, 
+          0
+        );
       }
     }
   }
