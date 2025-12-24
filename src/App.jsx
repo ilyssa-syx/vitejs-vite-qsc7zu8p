@@ -299,7 +299,7 @@ const SpiralRibbon = ({ powerOn }) => {
 };
 
 // --- 文字生成 ---
-const createTextPoints = (text, width = 40, height = 20) => {
+const createTextPoints = (text, width = 64, height = 32) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const w = 2048;
@@ -308,12 +308,12 @@ const createTextPoints = (text, width = 40, height = 20) => {
   canvas.height = h;
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, w, h);
-  ctx.font = '400 180px "Luxurious Script", cursive';
+  ctx.font = '400 280px "Luxurious Script", cursive';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 15;
+  ctx.lineWidth = 25;
   const lines = text.split('\n');
   const lineHeight = 200;
   const startY = h / 2 - ((lines.length - 1) * lineHeight) / 2;
